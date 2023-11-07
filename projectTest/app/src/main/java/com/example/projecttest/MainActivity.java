@@ -2,11 +2,18 @@ package com.example.projecttest;
 
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.util.Log;
+import android.util.Xml;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
+
+import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserException;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
@@ -14,6 +21,8 @@ import java.net.URLEncoder;
 public class MainActivity extends AppCompatActivity {
 
     private TextView resultTextView;
+    String key="7462685365636f6439327457626243";
+    String data;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -22,49 +31,136 @@ public class MainActivity extends AppCompatActivity {
 
         resultTextView = findViewById(R.id.resultTextView);
 
-        // 백그라운드 스레드에서 API 요청을 수행
-        new RetrieveDataAsyncTask().execute();
-    }
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    data = data();
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            resultTextView.setText(data);
 
-    private class RetrieveDataAsyncTask extends AsyncTask<Void, Void, String> {
-        @Override
-        protected String doInBackground(Void... voids) {
-            try {
-                StringBuilder urlBuilder = new StringBuilder("https://openapi.seoul.go.kr:8088");
-                urlBuilder.append("/" + URLEncoder.encode("7462685365636f6439327457626243", "UTF-8"));
-                urlBuilder.append("/" + URLEncoder.encode("xml", "UTF-8"));
-                urlBuilder.append("/" + URLEncoder.encode("TbGtnHwcwP", "UTF-8"));
-                urlBuilder.append("/" + URLEncoder.encode("1", "UTF-8"));
-                urlBuilder.append("/" + URLEncoder.encode("5", "UTF-8"));
-                URL url = new URL(urlBuilder.toString());
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("GET");
-                conn.setRequestProperty("Content-type", "application/xml");
-
-                if (conn.getResponseCode() >= 200 && conn.getResponseCode() <= 300) {
-                    BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                    StringBuilder sb = new StringBuilder();
-                    String line;
-                    while ((line = rd.readLine()) != null) {
-                        sb.append(line);
-                    }
-                    rd.close();
-                    conn.disconnect();
-                    return sb.toString();
-                } else {
-                    // 에러 처리
-                    return "Error: " + conn.getResponseCode();
+                        }
+                    });
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
-                return "Error: " + e.getMessage();
             }
-        }
+        }).start();
+    }
 
-        @Override
-        protected void onPostExecute(String result) {
-            // 결과를 TextView에 표시
-            resultTextView.setText(result);
+    String data() throws IOException{
+        String result;
+
+        StringBuilder urlBuilder = new StringBuilder("http://openapi.seoul.go.kr:8088");
+        urlBuilder.append("/" + URLEncoder.encode(key, "UTF-8"));
+        urlBuilder.append("/" + URLEncoder.encode("xml", "UTF-8"));
+        urlBuilder.append("/" + URLEncoder.encode("TbGtnHwcwP", "UTF-8"));
+        urlBuilder.append("/" + URLEncoder.encode("1", "UTF-8"));
+        urlBuilder.append("/" + URLEncoder.encode("200", "UTF-8"));
+        URL url = new URL(urlBuilder.toString());
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("GET");
+        conn.setRequestProperty("Content-type", "application/xml");
+
+        if (conn.getResponseCode() >= 200 && conn.getResponseCode() <= 300) {
+            BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = rd.readLine()) != null) {
+                sb.append(line);
+            }
+            rd.close();
+            conn.disconnect();
+//            Log.v("태그", "결과 값"  + sb.toString());
+            result = sb.toString();
+        } else {
+            // 에러 처리
+            return "Error: " + conn.getResponseCode();
+        }
+        //XML 파싱 부분을 data() 함수의 끝에 추가
+        try {
+            return parseXML(result);
+        } catch (XmlPullParserException e) {
+            e.printStackTrace();
+            return "XML Parsing Error: " + e.getMessage();
         }
     }
+
+    // XML 문자열을 파싱하여 LO와 LA 값을 추출하는 메서드
+    String parseXML(String xml) throws XmlPullParserException, IOException {
+        XmlPullParser parser = Xml.newPullParser();
+        parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false);
+        parser.setInput(new StringReader(xml));
+
+        StringBuilder resultBuilder = new StringBuilder();
+        int eventType = parser.getEventType();
+        while (eventType != XmlPullParser.END_DOCUMENT) {
+            if (eventType == XmlPullParser.START_TAG && parser.getName().equals("row")) {
+                // row 태그 내부를 처리
+                while (!(eventType == XmlPullParser.END_TAG && parser.getName().equals("row"))) {
+                    if (eventType == XmlPullParser.START_TAG) {
+                        if (parser.getName().equals("LO")) {
+                            parser.next(); // LO 값으로 이동
+                            resultBuilder.append("LO: ").append(parser.getText()).append("\n");
+                        } else if (parser.getName().equals("LA")) {
+                            parser.next(); // LA 값으로 이동
+                            resultBuilder.append("LA: ").append(parser.getText()).append("\n");
+                        }
+                    }
+                    eventType = parser.next();
+                }
+            }
+            eventType = parser.next();
+        }
+
+        return resultBuilder.toString();
+    }
+
+
+
+
+
+//    private class RetrieveDataAsyncTask extends AsyncTask<Void, Void, String> {
+//        @Override
+//        protected String doInBackground(Void... voids) {
+//            try {
+//                StringBuilder urlBuilder = new StringBuilder("https://openapi.seoul.go.kr:8088");
+//                urlBuilder.append("/" + URLEncoder.encode(key, "UTF-8"));
+//                urlBuilder.append("/" + URLEncoder.encode("xml", "UTF-8"));
+//                urlBuilder.append("/" + URLEncoder.encode("TbGtnHwcwP", "UTF-8"));
+//                urlBuilder.append("/" + URLEncoder.encode("1", "UTF-8"));
+//                urlBuilder.append("/" + URLEncoder.encode("200", "UTF-8"));
+//                URL url = new URL(urlBuilder.toString());
+//                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+//                conn.setRequestMethod("GET");
+//                conn.setRequestProperty("Content-type", "application/xml");
+//
+//                if (conn.getResponseCode() >= 200 && conn.getResponseCode() <= 300) {
+//                    BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+//                    StringBuilder sb = new StringBuilder();
+//                    String line;
+//                    while ((line = rd.readLine()) != null) {
+//                        sb.append(line);
+//                    }
+//                    rd.close();
+//                    conn.disconnect();
+//                    return sb.toString();
+//                } else {
+//                    // 에러 처리
+//                    return "Error: " + conn.getResponseCode();
+//                }
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//                return "Error: " + e.getMessage();
+//            }
+//        }
+//
+//        @Override
+//        protected void onPostExecute(String result) {
+//            // 결과를 TextView에 표시
+//            resultTextView.setText(result);
+//        }
+//    }
 }
