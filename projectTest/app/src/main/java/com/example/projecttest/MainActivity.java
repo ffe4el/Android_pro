@@ -30,14 +30,12 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected String doInBackground(Void... voids) {
             try {
-                StringBuilder urlBuilder = new StringBuilder("http://openapi.seoul.go.kr:8088");
-                urlBuilder.append("/" + URLEncoder.encode("sample", "UTF-8"));
+                StringBuilder urlBuilder = new StringBuilder("https://openapi.seoul.go.kr:8088");
+                urlBuilder.append("/" + URLEncoder.encode("7462685365636f6439327457626243", "UTF-8"));
                 urlBuilder.append("/" + URLEncoder.encode("xml", "UTF-8"));
-                urlBuilder.append("/" + URLEncoder.encode("CardSubwayStatsNew", "UTF-8"));
+                urlBuilder.append("/" + URLEncoder.encode("TbGtnHwcwP", "UTF-8"));
                 urlBuilder.append("/" + URLEncoder.encode("1", "UTF-8"));
                 urlBuilder.append("/" + URLEncoder.encode("5", "UTF-8"));
-                urlBuilder.append("/" + URLEncoder.encode("20220301", "UTF-8"));
-
                 URL url = new URL(urlBuilder.toString());
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("GET");
