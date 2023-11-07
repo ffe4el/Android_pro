@@ -12,6 +12,8 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.example.projecttest.databinding.ActivityMapsBinding;
 
+import java.util.ArrayList;
+
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
     private GoogleMap mMap;
@@ -43,15 +45,25 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
-        // Add a marker in Sydney and move the camera
-        LatLng SEOUL = new LatLng(37.556, 126.97);
+        ArrayList<LatLng> coordinates = getIntent().getParcelableArrayListExtra("coordinates");
 
-        MarkerOptions markerOptions = new MarkerOptions();
-        markerOptions.position(SEOUL);
-        markerOptions.title("서울");
-        markerOptions.snippet("한국 수도");
+        // 인텐트에서 좌표 리스트를 가져옴
+        if (coordinates != null) {
+            for (LatLng coordinate : coordinates) {
+                mMap.addMarker(new MarkerOptions().position(coordinate));
+            }
+        }
 
-        mMap.addMarker(markerOptions);
-        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(SEOUL, 10));
+//        LatLng SEOUL = new LatLng(37.556, 126.97);
+//        MarkerOptions markerOptions = new MarkerOptions();
+//        markerOptions.position(SEOUL);
+//        markerOptions.title("서울");
+//        markerOptions.snippet("한국 수도");
+//        mMap.addMarker(markerOptions);
+
+        //첫번째 좌표로 카메라 이동
+        if (!coordinates.isEmpty()) {
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(coordinates.get(0), 10));
+        }
     }
 }
