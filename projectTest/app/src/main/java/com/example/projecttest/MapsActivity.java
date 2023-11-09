@@ -13,6 +13,7 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.example.projecttest.databinding.ActivityMapsBinding;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
@@ -46,11 +47,17 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap = googleMap;
 
         ArrayList<LatLng> coordinates = getIntent().getParcelableArrayListExtra("coordinates");
+        HashMap<LatLng, String> markerInfoMap = (HashMap<LatLng, String>) getIntent().getSerializableExtra("markerInfoMap");
 
         // 인텐트에서 좌표 리스트를 가져옴
         if (coordinates != null) {
             for (LatLng coordinate : coordinates) {
-                mMap.addMarker(new MarkerOptions().position(coordinate));
+                //정보가 있다면 마커에 정보 추가
+                if (markerInfoMap != null && markerInfoMap.containsKey(coordinate)) {
+                    mMap.addMarker(new MarkerOptions().position(coordinate).title(markerInfoMap.get(coordinate)));
+                }else {
+                    mMap.addMarker(new MarkerOptions().position(coordinate));
+                }
             }
         }
 
