@@ -33,7 +33,7 @@ public class MainActivity extends AppCompatActivity {
     private ArrayList<LatLng> coordinates = new ArrayList<>();
 
     //각 좌표에 대한 정보를 저장하는 HashMap
-    private HashMap<LatLng, String> markerInfoMap = new HashMap<>();
+    private HashMap<LatLng, MarkerInfo> markerInfoMap = new HashMap<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -101,7 +101,7 @@ public class MainActivity extends AppCompatActivity {
     // XML 문자열을 파싱하여 LO와 LA 값을 추출하는 메서드
     String parseXML(String xml) throws XmlPullParserException, IOException {
         double lo = 0.0, la=0.0; // 위도 경도 임시저장 변수
-        String r_add;
+        String r_add = null;
         double area=0.0;
         int user=0, fan=0, air=0;
 
@@ -120,7 +120,6 @@ public class MainActivity extends AppCompatActivity {
                             parser.next(); // R_DETL_ADD 값으로 이동
                             resultBuilder.append("도로명 주소: ").append(parser.getText()).append("\n");
                             r_add = parser.getText();
-                            markerInfoMap.put(new LatLng(la, lo), r_add);
                         } else if (parser.getName().equals("R_AREA_SQR")) {
                             parser.next(); // R_AREA_SQR 값으로 이동
                             resultBuilder.append("면적: ").append(parser.getText()).append("\n");
@@ -149,6 +148,10 @@ public class MainActivity extends AppCompatActivity {
                     }
                     eventType = parser.next();
                 }
+                //MarkerInfo 인스턴스를 생성하여 정보 저장
+                MarkerInfo markerInfo = new MarkerInfo(r_add, area, user, fan, air);
+                markerInfoMap.put(new LatLng(la, lo), markerInfo);
+
                 coordinates.add(new LatLng(la, lo));
             }
             eventType = parser.next();
