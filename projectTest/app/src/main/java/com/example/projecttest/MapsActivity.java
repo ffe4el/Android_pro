@@ -1,12 +1,21 @@
 package com.example.projecttest;
 
 import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.FragmentActivity;
 
+import android.Manifest;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
+import android.content.pm.PackageManager;
+import android.location.Location;
 import android.os.Bundle;
 
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -23,6 +32,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private GoogleMap mMap;
     private ActivityMapsBinding binding;
+    private HashMap<Marker, MarkerInfo> markerInfoHashMap; //Marker와 MarkerInfo를 매핑하는 맵 선언
+    private FusedLocationProviderClient fusedLocationClient;
+    private LocationCallback locationCallback;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,6 +42,33 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         binding = ActivityMapsBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+
+        //hashmap초기화
+        markerInfoHashMap = new HashMap<>();
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
+        //위치 업데이트 콜백 설정
+        locationCallback = new LocationCallback() {
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                if (locationResult == null) {
+                    return;
+                }
+                for (Location location : locationResult.getLocations()) {
+                    LatLng currentLatLng = new LatLng(location.getLatitude(), location.getLongitude());
+                    mMap.moveCamera(CameraUpdateFactory.newLatLng(currentLatLng));
+                }
+            }
+        };
+
+        //위치 권한 확인
+        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+        } else {
+            // 위치 업데이트 시작
+            startLocationUpdates();
+        }
 
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
@@ -59,19 +98,14 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 //정보가 있다면 마커에 정보 추가
                 if (markerInfoMap != null && markerInfoMap.containsKey(coordinate)) {
                     MarkerInfo markerInfo = markerInfoMap.get(coordinate);
-                    mMap.addMarker(new MarkerOptions().position(coordinate).title(markerInfo.getAddress())).setTag(markerInfo);
-                }else {
+                    Marker marker = mMap.addMarker(new MarkerOptions().position(coordinate).title(markerInfo.getAddress()));
+                    marker.setTag(markerInfo);
+                    markerInfoHashMap.put(marker, markerInfo); // HashMap에 매핑 추가
+                } else {
                     mMap.addMarker(new MarkerOptions().position(coordinate));
                 }
             }
         }
-
-//        LatLng SEOUL = new LatLng(37.556, 126.97);
-//        MarkerOptions markerOptions = new MarkerOptions();
-//        markerOptions.position(SEOUL);
-//        markerOptions.title("서울");
-//        markerOptions.snippet("한국 수도");
-//        mMap.addMarker(markerOptions);
 
         // 마커 클릭 리스너 설정
         mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
@@ -86,9 +120,33 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         });
 
         //첫번째 좌표로 카메라 이동
-        if (!coordinates.isEmpty()) {
-            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(coordinates.get(0), 10));
+//        if (!coordinates.isEmpty()) {
+//            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(coordinates.get(0), 10));
+//        }
+
+        // 기존 위치로 카메라 이동
+        LatLng defaultLocation = new LatLng(37.5665, 126.9780); // 서울의 위도, 경도
+        mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(defaultLocation, 10));
+
+
+    }
+
+    //위치 업데이트 시작
+    private void startLocationUpdates() {
+        LocationRequest locationRequest = LocationRequest.create()
+                .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
+                .setInterval(5000); // 5초마다 위치 업데이트
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            // TODO: Consider calling
+            //    ActivityCompat#requestPermissions
+            // here to request the missing permissions, and then overriding
+            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
+            //                                          int[] grantResults)
+            // to handle the case where the user grants the permission. See the documentation
+            // for ActivityCompat#requestPermissions for more details.
+            return;
         }
+        fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null);
     }
 
     private void showMarkerInfoDialog(MarkerInfo markerInfo) {
@@ -106,5 +164,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     }
                 });
         builder.show();
+    }
+
+    //액티비티가 종료될 때 위치 업데이트 중지
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        fusedLocationClient.removeLocationUpdates(locationCallback);
     }
 }
