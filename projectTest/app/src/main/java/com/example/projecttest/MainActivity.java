@@ -152,6 +152,10 @@ public class MainActivity extends AppCompatActivity {
                 MarkerInfo markerInfo = new MarkerInfo(r_add, area, user, fan, air);
                 markerInfoMap.put(new LatLng(la, lo), markerInfo);
 
+                // LatLng를 문자열로 변환하여 중복을 허용하지 않도록 함
+                String latLngKey = la + "," + lo;
+                markerInfoMap.put(latLngKey, markerInfo);
+
                 coordinates.add(new LatLng(la, lo));
             }
             eventType = parser.next();
